@@ -384,15 +384,20 @@ the buffer changes."
 ;; When switching away from a window (for example by clicking in another
 ;; window), return the buffer hosting it to its "natural" state (otherwise it's
 ;; surprising to the user when coming back to it).
-(defun boon-reset-state-for-switchw (_new-frame)
+(defun boon-reset-state-for-switchw (&optional new-frame)
   "Reset the boon state to command when switching windows."
-  (-when-let* ((old-frame-or-window (old-selected-window))  ; `old-selected-window' sometimes (surprisingly) returns a frame.
-               (old-window (and (windowp old-frame-or-window) old-frame-or-window))
-               (old-buffer (window-buffer old-window)))
-    (with-current-buffer old-buffer
-      (boon-set-natural-state))))
+  (unless (or
+           (and new-frame (not (eq (selected-frame) new-frame)))  ; did not switch to new frame
+           (minibufferp))
+    (-when-let* ((old-frame-or-window (old-selected-window))  ; `old-selected-window' sometimes (surprisingly) returns a frame.
+                 (old-window (and (windowp old-frame-or-window) old-frame-or-window))
+                 (old-buffer (window-buffer old-window)))
+      (with-current-buffer old-buffer
+        (boon-set-natural-state)))))
 
 (add-hook 'window-selection-change-functions #'boon-reset-state-for-switchw)
+(add-function :after after-focus-change-function
+              #'boon-reset-state-for-switchw)
 
 (defadvice isearch-exit (after boon-isearch-set-search activate compile)
   "After isearch, highlight the search term."
